@@ -114,3 +114,28 @@ sysenter_fin:
       movl 12(%ESP), %ECX     // User stack address
       sti                     // Enable interrupts again
       sysexit
+
+
+ENTRY (writeMSR)
+      pushl %ebp
+      movl %esp, %ebp
+      pushl %eax
+      pushl %ecx
+      pushl %edx
+      movl 8(%ebp), %eax
+      movl 12(%ebp), %ecx
+      movl $0, %edx
+      wrmsr
+      popl %edx
+      popl %ecx
+      popl %eax
+      movl %ebp, %esp
+      popl %ebp
+      ret
+
+ENTRY (clock_handler)
+      SAVE_ALL
+      EOI
+      call clock_routine
+      RESTORE_ALL
+      iret

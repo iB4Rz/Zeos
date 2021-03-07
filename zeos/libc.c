@@ -45,7 +45,7 @@ int strlen(char *a)
 
 void perror()
 {
-  char buffer[256];
+  char buffer[128];
   itoa(errno, buffer);
   write(1, buffer, strlen(buffer));
 }

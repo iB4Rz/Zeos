@@ -55,8 +55,13 @@ int sys_write(int fd, char * buffer, int size)
   if (error != 0) return error;
   
   // Check *buffer is not NULL and size is positive
-  if (buffer == NULL && size < 0) return -EINVAL;
+  if (buffer == NULL || size < 0) return -EINVAL;
 
   copy_from_user(buffer,bufk,size);
   return sys_write_console(bufk,size);
+}
+
+extern int zeos_ticks;
+int sys_gettime() {
+  return zeos_ticks;
 }
