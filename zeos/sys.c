@@ -54,8 +54,10 @@ int sys_write(int fd, char * buffer, int size)
   int error = check_fd(fd,ESCRIPTURA);
   if (error != 0) return error;
   
-  // Check *buffer is not NULL and size is positive
-  if (buffer == NULL || size < 0) return -EINVAL;
+  // Check *buffer is not NULL
+  if (buffer == NULL) return -EFAULT;
+  // Size must be positive
+  if (size < 0) return -EINVAL;
 
   copy_from_user(buffer,bufk,size);
   return sys_write_console(bufk,size);

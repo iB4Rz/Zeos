@@ -12,8 +12,6 @@
 Gate idt[IDT_ENTRIES];
 Register    idtR;
 
-int zeos_ticks = 0;
-
 char char_map[] =
 {
   '\0','\0','1','2','3','4','5','6',
@@ -75,8 +73,8 @@ void setTrapHandler(int vector, void (*handler)(), int maxAccessibleFromPL)
   idt[vector].highOffset      = highWord((DWord)handler);
 }
 
-void keyboard_handler();
 void clock_handler();
+void keyboard_handler();
 void system_call_handler();
 void syscall_handler_sysenter();
 void writeMSR();
@@ -109,6 +107,7 @@ void keyboard_routine()
   }
 }
 
+extern int zeos_ticks;
 void clock_routine()
 {
   zeos_show_clock();

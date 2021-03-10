@@ -115,7 +115,6 @@ sysenter_fin:
       sti                     // Enable interrupts again
       sysexit
 
-
 ENTRY (writeMSR)
       pushl %ebp
       movl %esp, %ebp

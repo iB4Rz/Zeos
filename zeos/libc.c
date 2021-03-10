@@ -3,6 +3,7 @@
  */
 
 #include <libc.h>
+#include <errno.h>
 
 #include <types.h>
 
@@ -45,7 +46,23 @@ int strlen(char *a)
 
 void perror()
 {
-  char buffer[128];
-  itoa(errno, buffer);
-  write(1, buffer, strlen(buffer));
+  write(1, "Hola como estas", 16);
+  switch (errno) {
+    case EBADF:
+      write(1, "Bad file number\n", 16);
+    break;
+    case EACCES:
+      write(1, "Permission denied\n", 18);
+    break;
+    case EFAULT:
+      write(1, "Bad adress\n", 11);
+    break;
+    case EINVAL:
+      write(1, "Invalid argument\n", 17);
+    break;
+    default:
+      write(1, "Unknown error\n", 14);
+    break;
+  }
+
 }
