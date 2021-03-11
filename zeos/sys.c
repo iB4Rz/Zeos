@@ -17,6 +17,7 @@
 
 #define LECTURA 0
 #define ESCRIPTURA 1
+#define BUFF_SIZE 1024
 
 int check_fd(int fd, int permissions)
 {
@@ -54,10 +55,10 @@ int sys_write(int fd, char * buffer, int size)
   int error = check_fd(fd,ESCRIPTURA);
   if (error != 0) return error;
   
-  // Check *buffer is not NULL
-  if (buffer == NULL) return -EFAULT;
   // Size must be positive
   if (size < 0) return -EINVAL;
+  // Checks if a user space pointer is valid
+  if (!access_ok(VERIFY_READ,buffer,size)) return -EFAULT;
 
   copy_from_user(buffer,bufk,size);
   return sys_write_console(bufk,size);

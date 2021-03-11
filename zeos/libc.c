@@ -46,22 +46,21 @@ int strlen(char *a)
 
 void perror()
 {
-  write(1, "Hola como estas", 16);
   switch (errno) {
     case EBADF:
-      write(1, "Bad file number\n", 16);
+      write(1, "<<ERROR>> Bad file number\n", 26);
     break;
     case EACCES:
-      write(1, "Permission denied\n", 18);
+      write(1, "<<ERROR>> Permission denied\n", 28);
     break;
     case EFAULT:
-      write(1, "Bad adress\n", 11);
+      write(1, "<<ERROR>> Bad adress\n", 21);
     break;
     case EINVAL:
-      write(1, "Invalid argument\n", 17);
+      write(1, "<<ERROR>> Invalid argument\n", 27);
     break;
     default:
-      write(1, "Unknown error\n", 14);
+      write(1, "<<ERROR>> Unknown error\n", 24);
     break;
   }
 

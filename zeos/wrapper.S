@@ -34,7 +34,7 @@ enderror_write:
 ENTRY (gettime)
     pushl %ebp
     movl %esp, %ebp
-    movl $10, %eax
+    movl $0x0A, %eax
     pushl %ecx
     pushl %edx
     pushl $retusm_gettime
