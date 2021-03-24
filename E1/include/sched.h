@@ -47,7 +47,7 @@ void task_switch(union task_union*t);
 
 void inner_task_switch(union task_union*t);
 
-void get_ebp();
+void change_context();
 
 struct task_struct *list_head_to_task_struct(struct list_head *l);
 

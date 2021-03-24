@@ -22,7 +22,7 @@ struct list_head readyqueue;
 struct task_struct *idle_task;
 void writeMSR();
 void task_switch(union task_union*t);
-void get_ebp(int* new);
+void change_context();
 
 /* get_DIR - Returns the Page Directory address for task 't' */
 page_table_entry * get_DIR (struct task_struct *t) 
@@ -63,7 +63,7 @@ void init_idle (void)
   struct list_head *first = list_first(&freequeue);
   list_del(first);
   struct task_struct *idle = list_head_to_task_struct(first);
-  idle -> PID = 0;
+  idle -> PID  = 0;
   allocate_DIR(idle);
   union task_union *uidle = (union task_union*) idle;
   uidle -> stack[KERNEL_STACK_SIZE-1] = (unsigned long)cpu_idle;
@@ -102,9 +102,8 @@ void init_sched()
 void inner_task_switch(union task_union*t) {
   tss.esp0 = (DWord)&t -> stack[KERNEL_STACK_SIZE];
   writeMSR(tss.esp0, 0x175);
-  set_cr3(get_DIR(t->task));
-  current()-> kernel_esp = (int) get_ebp();
-  t
+  set_cr3(get_DIR(&t->task));
+  change_context(current()-> kernel_esp, t->task.kernel_esp);
 }
 
 struct task_struct* current()
