@@ -80,3 +80,28 @@ enderror_getpid:
     movl %ebp, %esp
     popl %ebp
     ret
+
+ENTRY (fork)
+    pushl %ebp
+    movl %esp, %ebp
+    movl $2, %eax
+    pushl %ecx
+    pushl %edx
+    pushl $retusm_fork
+    pushl %ebp
+    movl %esp, %ebp
+    sysenter
+retusm_fork:
+    popl %ebp
+    addl $4, %esp
+    popl %edx
+    popl %ecx
+    cmp  $0,%eax
+    jge enderror_fork
+    neg %eax
+    mov %eax, errno
+    mov $-1, %eax
+enderror_fork:
+    movl %ebp, %esp
+    popl %ebp
+    ret

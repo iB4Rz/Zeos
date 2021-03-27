@@ -66,9 +66,9 @@ void init_idle (void)
   idle -> PID  = 0;
   allocate_DIR(idle);
   union task_union *uidle = (union task_union*) idle;
-  uidle -> stack[KERNEL_STACK_SIZE-1] = (unsigned long)cpu_idle;
-  uidle -> stack[KERNEL_STACK_SIZE-2] = 0;
-  idle -> dir = (int *)&uidle -> stack[KERNEL_STACK_SIZE-2];
+  uidle -> stack[KERNEL_STACK_SIZE-1] = (unsigned long)&cpu_idle;
+  uidle -> stack[KERNEL_STACK_SIZE-2] = 0;  // register ebp
+  idle -> kernel_esp = (unsigned int)&uidle -> stack[KERNEL_STACK_SIZE-2];
 
   idle_task = idle;
 }
@@ -88,6 +88,58 @@ void init_task1(void)
 
 }
 
+int get_quantum(struct task_struct *t)
+{
+  return t->quantum;
+}
+
+void set_quantum(struct task_struct *t, int new_quantum)
+{
+  t->quantum = new_quantum;
+}
+
+int quantum;
+
+void update_sched_data_rr (void) 
+{
+  --quantum;
+}
+
+int needs_sched_rr (void)
+{
+  return quantum <= 0 && !list_empty(&readyqueue);
+}
+
+void update_process_state_rr (struct task_struct *t, struct list_head *dst_queue)
+{
+  if (t->state != ST_RUN) list_del(&(t->list));
+  if (dst_queue != NULL) {
+    if (t != idle_task) {
+      list_add_tail(&(t->list), dst_queue);
+      if (dst_queue == &readyqueue) {
+        t->state = ST_READY;
+      }
+      else t->state = ST_BLOCKED;
+    }
+  }
+  else t->state = ST_RUN;
+}
+
+void sched_next_rr (void)
+{
+  struct task_struct *t;
+  if (!list_empty(&readyqueue)) {
+    struct list_head *first = list_first(&readyqueue);
+    list_del(first);
+    t = list_head_to_task_struct(first);
+    update_process_state_rr(t, NULL);
+    quantum = get_quantum(t);
+  }
+  else t = idle_task;
+   
+  task_switch((union task_union*)t);
+}
+
 
 void init_sched()
 {
@@ -96,7 +148,14 @@ void init_sched()
     list_add_tail(&(task[i].task.list), &freequeue);
   }
   INIT_LIST_HEAD(&readyqueue);
+}
 
+void schedule() {
+
+  if (needs_sched_rr()) {
+    update_process_state_rr(current(), &readyqueue);
+    sched_next_rr();
+  }
 }
 
 void inner_task_switch(union task_union*t) {

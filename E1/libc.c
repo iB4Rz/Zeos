@@ -64,4 +64,6 @@ void perror()
     break;
   }
 
+  // falta ENOMEM
+
 }

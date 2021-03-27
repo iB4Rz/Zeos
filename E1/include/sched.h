@@ -19,7 +19,8 @@ struct task_struct {
   page_table_entry * dir_pages_baseAddr;
   struct list_head list;
   unsigned int kernel_esp;
-  int *dir;
+  enum state_t state;
+  int quantum;
 };
 
 union task_union {
@@ -29,6 +30,8 @@ union task_union {
 
 extern union task_union task[NR_TASKS]; /* Vector de tasques */
 
+extern struct list_head freequeue;
+extern struct list_head readyqueue;
 
 #define KERNEL_ESP(t)       	(DWord) &(t)->stack[KERNEL_STACK_SIZE]
 
@@ -58,6 +61,8 @@ page_table_entry * get_PT (struct task_struct *t) ;
 page_table_entry * get_DIR (struct task_struct *t) ;
 
 /* Headers for the scheduling policy */
+void schedule(void);
+
 void sched_next_rr();
 void update_process_state_rr(struct task_struct *t, struct list_head *dest);
 int needs_sched_rr();

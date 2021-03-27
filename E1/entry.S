@@ -163,3 +163,7 @@ ENTRY (change_context)
       movl 8(%esp), %esp
       popl %ebp
       ret
+
+ENTRY (get_ebp)
+      mov %ebp, %eax
+      ret
