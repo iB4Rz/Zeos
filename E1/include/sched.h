@@ -8,6 +8,7 @@
 #include <list.h>
 #include <types.h>
 #include <mm_address.h>
+#include <stats.h>
 
 #define NR_TASKS      10
 #define KERNEL_STACK_SIZE	1024
@@ -21,6 +22,7 @@ struct task_struct {
   unsigned int kernel_esp;
   enum state_t state;
   int quantum;
+  struct stats st;
 };
 
 union task_union {
@@ -43,6 +45,8 @@ void init_task1(void);
 void init_idle(void);
 
 void init_sched(void);
+
+void init_stats(struct task_struct *t);
 
 struct task_struct * current();
 

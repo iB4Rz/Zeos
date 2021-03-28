@@ -114,6 +114,17 @@ int sys_fork()
 
 void sys_exit()
 {  
+  page_table_entry *current_pt = get_PT(current());
+
+  for (int pag = 0; pag < NUM_PAG_DATA; ++pag) {
+    free_frame(get_frame(current_pt,PAG_LOG_INIT_DATA+pag));
+    del_ss_pag(current_pt, PAG_LOG_INIT_DATA+pag);
+  }
+
+  current()->PID = -1;
+  list_add_tail(&(current()->list),&freequeue);
+
+  sched_next_rr();
 }
 
 int sys_write(int fd, char * buffer, int size) 
@@ -129,6 +140,19 @@ int sys_write(int fd, char * buffer, int size)
 
   copy_from_user(buffer,bufk,size);
   return sys_write_console(bufk,size);
+}
+
+int sys_get_stats(int pid, struct stats *st)
+{
+  if(!access_ok(VERIFY_WRITE, st, sizeof(struct stats))) return -EFAULT;
+  if (pid < 0) return -EINVAL;
+  for (int i = 0; i < NR_TASKS; ++i) {
+    if (task[i].task.PID == pid) {
+      copy_to_user(&(task[i].task.st), st, sizeof(struct stats));
+      return 0;
+    }
+  }
+  return -ESRCH;
 }
 
 extern int zeos_ticks;

@@ -3,7 +3,7 @@
 
 #define	EPERM 1		/* Not super-user */
 #define	ENOENT 2	/* No such file or directory */
-#define	ESRCH 3		/* No such process */d
+#define	ESRCH 3		/* No such process */
 #define	EINTR 4		/* Interrupted system call */
 #define	EIO 5		/* I/O error */
 #define	ENXIO 6		/* No such device or address */

@@ -105,3 +105,51 @@ enderror_fork:
     movl %ebp, %esp
     popl %ebp
     ret
+
+ENTRY (exit)
+    pushl %ebp
+    movl %esp, %ebp
+    movl $1, %eax
+    pushl %ecx
+    pushl %edx
+    pushl $retusm_exit
+    pushl %ebp
+    movl %esp, %ebp
+    sysenter
+retusm_exit:
+    popl %ebp
+    addl $4, %esp
+    popl %edx
+    popl %ecx
+    movl %ebp, %esp
+    popl %ebp
+    ret
+
+ENTRY(get_stats)
+    push %ebp
+    mov %esp, %ebp
+    pushl %ebx
+    mov 8(%ebp), %ebx
+    mov 12(%ebp), %ecx
+    movl $0x23, %eax
+    pushl %ecx
+    pushl %edx
+    pushl $retusm_stats
+    pushl %ebp
+    movl %esp, %ebp
+    sysenter
+retusm_stats:
+    popl %ebp
+    addl $4, %esp
+    popl %edx
+    popl %ecx
+    popl %ebx
+    cmp  $0,%eax
+    jge enderror_stats
+    neg %eax
+    mov %eax, errno
+    mov $-1, %eax
+enderror_stats:
+    movl %ebp, %esp
+    popl %ebp
+    ret

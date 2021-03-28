@@ -69,11 +69,33 @@
       movb $0x20, %al; \
       outb %al, $0x20;
 
+#define SAVE_REGS \
+      pushl %eax; \
+      pushl %ebp; \
+      pushl %edi; \
+      pushl %esi; \
+      pushl %edx; \
+      pushl %ecx; \
+      pushl %ebx;
+
+#define RESTORE_REGS \
+      pushl %ebx; \
+      pushl %ecx; \
+      pushl %edx; \
+      pushl %esi; \
+      pushl %edi; \
+      pushl %ebp; \
+      pushl %eax;
+
 
 ENTRY (keyboard_handler)
       SAVE_ALL
+      SAVE_REGS
+      call user_to_system
+      RESTORE_REGS
       EOI
       call keyboard_routine
+      call system_to_user
       RESTORE_ALL
       iret
 
@@ -103,6 +125,9 @@ ENTRY(syscall_handler_sysenter)
       jl sysenter_err
       cmpl $MAX_SYSCALL, %EAX
       jg sysenter_err
+      SAVE_REGS
+      call user_to_system
+      RESTORE_REGS
       call *sys_call_table(, %EAX, 0x04)
       jmp sysenter_fin
 sysenter_err:
@@ -112,6 +137,9 @@ sysenter_fin:
       RESTORE_ALL
       movl (%ESP), %EDX       // Return address
       movl 12(%ESP), %ECX     // User stack address
+      SAVE_REGS
+      call system_to_user
+      RESTORE_REGS
       sti                     // Enable interrupts again
       sysexit
 
@@ -134,8 +162,12 @@ ENTRY (writeMSR)
 
 ENTRY (clock_handler)
       SAVE_ALL
+      SAVE_REGS
+      call user_to_system
+      RESTORE_REGS
       EOI
       call clock_routine
+      call system_to_user
       RESTORE_ALL
       iret
 
