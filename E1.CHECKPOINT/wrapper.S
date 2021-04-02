@@ -1,6 +1,21 @@
 #include <asm.h>
 #include <segment.h>
 
+
+ENTRY (syscall_sysenter)
+    pushl %ecx
+    pushl %edx
+    pushl $sysenter_ret
+    pushl %ebp
+    movl %esp, %ebp
+    sysenter
+ENTRY(sysenter_ret)
+    popl %ebp
+    popl %edx
+    popl %edx
+    popl %ecx
+    ret
+
 ENTRY (write)
     pushl %ebp
     movl %esp, %ebp
@@ -9,24 +24,10 @@ ENTRY (write)
     movl 12(%ebp), %ecx
     movl 16(%ebp), %edx
     movl $0x04, %eax
-    pushl %ecx
-    pushl %edx
-    pushl $retusm_write
-    pushl %ebp
-    movl %esp, %ebp
-    sysenter
-retusm_write:
-    popl %ebp
-    addl $4, %esp
-    popl %edx
-    popl %ecx
+    call syscall_sysenter
     popl %ebx
     cmp  $0,%eax
-    jge enderror_write
-    neg %eax
-    mov %eax, errno
-    mov $-1, %eax
-enderror_write:
+    jl sysenter_error
     movl %ebp, %esp
     popl %ebp
     ret
@@ -35,23 +36,17 @@ ENTRY (gettime)
     pushl %ebp
     movl %esp, %ebp
     movl $0x0A, %eax
-    pushl %ecx
-    pushl %edx
-    pushl $retusm_gettime
-    pushl %ebp
-    movl %esp, %ebp
-    sysenter
-retusm_gettime:
-    popl %ebp
-    addl $4, %esp
-    popl %edx
-    popl %ecx
+    call syscall_sysenter
     cmp  $0,%eax
-    jge enderror_gettime
+    jl sysenter_error
+    movl %ebp, %esp
+    popl %ebp
+    ret
+
+sysenter_error:
     neg %eax
     mov %eax, errno
     mov $-1, %eax
-enderror_gettime:
     movl %ebp, %esp
     popl %ebp
     ret
