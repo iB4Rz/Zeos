@@ -28,6 +28,17 @@ int check_fd(int fd, int permissions)
   return 0;
 }
 
+void user_to_system() {
+  current()->st.user_ticks += get_ticks() - current()->st.elapsed_total_ticks;
+  current()->st.elapsed_total_ticks = get_ticks();
+  return;
+}
+
+void system_to_user() {
+  current()->st.system_ticks += get_ticks() - current()->st.elapsed_total_ticks;
+  current()->st.elapsed_total_ticks = get_ticks();
+}
+
 int sys_ni_syscall()
 {
 	return -38; /*ENOSYS*/
@@ -47,13 +58,12 @@ int ret_from_fork()
 
 int sys_fork()
 {
-  // creates the child process
   if (list_empty(&freequeue)) return -ENOMEM;
 
   struct list_head *first = list_first(&freequeue);
   struct task_struct *child = list_head_to_task_struct(first);
 
-  copy_data(current(), child, 4096);
+  copy_data(current(), (union task_union*)child, 4096);
 
   allocate_DIR(child);
 
@@ -97,12 +107,16 @@ int sys_fork()
   // Flush TLB
   set_cr3(get_DIR(current()));
 
-  child->PID = ++PID_GL;
+  // Flush TLB
+  set_cr3(get_DIR(current()));
+  child->PID = PID_GL;
+  ++PID_GL;
+  if (PID_GL == PID_GL + NR_TASKS) PID_GL = 1000;
 
   unsigned int ebp = (unsigned int) get_ebp();
   ebp -= (unsigned int)current() + (unsigned int)child;
-  *(unsigned int*)(ebp) = (unsigned int)ret_from_fork;
-  *(unsigned int*)(ebp-4) = 0;
+  *(DWord*)(ebp) = (DWord)ret_from_fork;
+  *(DWord*)(ebp-4) = 0;
   child->kernel_esp = ebp-4;
 
   list_add_tail(&(child->list),&readyqueue);
@@ -142,12 +156,15 @@ int sys_write(int fd, char * buffer, int size)
   return sys_write_console(bufk,size);
 }
 
+extern int quantum;
+
 int sys_get_stats(int pid, struct stats *st)
 {
   if(!access_ok(VERIFY_WRITE, st, sizeof(struct stats))) return -EFAULT;
   if (pid < 0) return -EINVAL;
   for (int i = 0; i < NR_TASKS; ++i) {
     if (task[i].task.PID == pid) {
+      task[i].task.st.remaining_ticks = quantum;
       copy_to_user(&(task[i].task.st), st, sizeof(struct stats));
       return 0;
     }
@@ -156,6 +173,7 @@ int sys_get_stats(int pid, struct stats *st)
 }
 
 extern int zeos_ticks;
+
 int sys_gettime() {
   return zeos_ticks;
 }

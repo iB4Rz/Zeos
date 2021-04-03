@@ -6,7 +6,6 @@
 #include <segment.h>
 #include <errno.h>
 
-
 /**************************************************/
 /**** Save & Restore ******************************/
 /**                                              **/
@@ -69,79 +68,42 @@
       movb $0x20, %al; \
       outb %al, $0x20;
 
-#define SAVE_REGS \
-      pushl %eax; \
-      pushl %ebp; \
-      pushl %edi; \
-      pushl %esi; \
-      pushl %edx; \
-      pushl %ecx; \
-      pushl %ebx;
-
-#define RESTORE_REGS \
-      pushl %ebx; \
-      pushl %ecx; \
-      pushl %edx; \
-      pushl %esi; \
-      pushl %edi; \
-      pushl %ebp; \
-      pushl %eax;
+ENTRY(syscall_handler_sysenter)
+      push $__USER_DS
+      push %ebp         // User stack address
+      pushfl
+      push $__USER_CS
+      push 4(%ebp)      // User return address
+      SAVE_ALL
+      cmpl $0, %eax
+      jl sysenter_err
+      cmpl $MAX_SYSCALL, %eax
+      jg sysenter_err
+      call *sys_call_table(, %eax, 0x04)
+      jmp sysenter_fin
+sysenter_err:
+      movl $-ENOSYS, %eax
+sysenter_fin:
+      movl %eax, 0x18(%esp)
+      RESTORE_ALL
+      movl (%esp), %edx      // Return address
+      movl 12(%esp), %ecx     // User stack address
+      sti                     // Enable interrupts again
+      sysexit
 
 
 ENTRY (keyboard_handler)
       SAVE_ALL
-      SAVE_REGS
+      pushl %eax;
       call user_to_system
-      RESTORE_REGS
+      popl %eax;
       EOI
       call keyboard_routine
+      pushl %eax;
       call system_to_user
+      popl %eax;
       RESTORE_ALL
       iret
-
-ENTRY(system_call_handler)
-      SAVE_ALL                            // Save the current context
-      cmpl $0, %EAX                       // Is syscall number negative?
-      jl err                              // If it is, jump to return an error
-      cmpl $MAX_SYSCALL, %EAX             // Is syscall greater than MAX_SYSCALL (4)?
-      jg err                              // If it is, jump to return an error
-      call *sys_call_table(, %EAX, 0x04)  // Call the corresponding service routine
-      jmp fin                             // Finish
-err:
-      movl $-ENOSYS, %EAX                 // Move to EAX the ENOSYS error
-fin:
-      movl %EAX, 0x18(%esp)               // Change the EAX value in the stack
-      RESTORE_ALL                         // Restore the context
-      iret
-
-ENTRY(syscall_handler_sysenter)
-      push $__USER_DS
-      push %EBP         // User stack address
-      pushfl
-      push $__USER_CS
-      push 4(%EBP)      // User return address
-      SAVE_ALL
-      cmpl $0, %EAX
-      jl sysenter_err
-      cmpl $MAX_SYSCALL, %EAX
-      jg sysenter_err
-      SAVE_REGS
-      call user_to_system
-      RESTORE_REGS
-      call *sys_call_table(, %EAX, 0x04)
-      jmp sysenter_fin
-sysenter_err:
-      movl $-ENOSYS, %EAX
-sysenter_fin:
-      movl %EAX, 0x18(%ESP)
-      RESTORE_ALL
-      movl (%ESP), %EDX       // Return address
-      movl 12(%ESP), %ECX     // User stack address
-      SAVE_REGS
-      call system_to_user
-      RESTORE_REGS
-      sti                     // Enable interrupts again
-      sysexit
 
 ENTRY (writeMSR)
       pushl %ebp
@@ -162,15 +124,16 @@ ENTRY (writeMSR)
 
 ENTRY (clock_handler)
       SAVE_ALL
-      SAVE_REGS
+      pushl %eax;
       call user_to_system
-      RESTORE_REGS
+      popl %eax;
       EOI
       call clock_routine
+      pushl %eax;
       call system_to_user
+      popl %eax;
       RESTORE_ALL
       iret
-
 
 // TASKS
 

@@ -2,6 +2,8 @@
  * sched.c - initializes struct for task 0 anda task 1
  */
 
+#include <types.h>
+#include <hardware.h>
 #include <sched.h>
 #include <mm.h>
 #include <io.h>
@@ -69,7 +71,7 @@ void init_idle (void)
   union task_union *uidle = (union task_union*) idle;
   uidle -> stack[KERNEL_STACK_SIZE-1] = (unsigned long)&cpu_idle;
   uidle -> stack[KERNEL_STACK_SIZE-2] = 0;  // register ebp
-  idle -> kernel_esp = (unsigned int)&uidle -> stack[KERNEL_STACK_SIZE-2];
+  idle -> kernel_esp = (unsigned int)&(uidle -> stack[KERNEL_STACK_SIZE-2]);
 
   idle->quantum = 382;
   init_stats(idle);
@@ -85,8 +87,8 @@ void init_task1(void)
   allocate_DIR(init);
   set_user_pages(init);
   union task_union *uinit = (union task_union*) uinit;
-  tss.esp0 = (DWord)&uinit -> stack[KERNEL_STACK_SIZE];
-  writeMSR(tss.esp0, 0x175);
+  tss.esp0 = (DWord)&(uinit -> stack[KERNEL_STACK_SIZE]);
+  writeMSR((unsigned long)&(uinit -> stack[KERNEL_STACK_SIZE]), 0x175);
   set_cr3(get_DIR(init));
   
   init->quantum = 382;
@@ -115,7 +117,7 @@ void set_quantum(struct task_struct *t, int new_quantum)
   t->quantum = new_quantum;
 }
 
-int quantum;
+int quantum = 0;
 
 void update_sched_data_rr (void) 
 {
@@ -125,7 +127,9 @@ void update_sched_data_rr (void)
 
 int needs_sched_rr (void)
 {
-  return quantum <= 0 && !list_empty(&readyqueue);
+  if (quantum == 0 && !list_empty(&readyqueue)) return 1;
+  if (quantum == 0) quantum=get_quantum(current());
+  return 0;
 }
 
 void update_process_state_rr (struct task_struct *t, struct list_head *dst_queue)
@@ -165,7 +169,6 @@ void sched_next_rr (void)
   task_switch((union task_union*)t);
 }
 
-
 void init_sched()
 {
   INIT_LIST_HEAD(&freequeue);
@@ -176,8 +179,9 @@ void init_sched()
   INIT_LIST_HEAD(&readyqueue);
 }
 
-void schedule() {
-
+void schedule() 
+{
+  update_sched_data_rr();
   if (needs_sched_rr()) {
     update_process_state_rr(current(), &readyqueue);
     sched_next_rr();
@@ -185,21 +189,10 @@ void schedule() {
 }
 
 void inner_task_switch(union task_union*t) {
-  tss.esp0 = (DWord)&t -> stack[KERNEL_STACK_SIZE];
-  writeMSR(tss.esp0, 0x175);
+  tss.esp0 = (DWord)&(t -> stack[KERNEL_STACK_SIZE]);
+  writeMSR((unsigned long)&(t -> stack[KERNEL_STACK_SIZE]), 0x175);
   set_cr3(get_DIR(&t->task));
-  change_context(current()-> kernel_esp, t->task.kernel_esp);
-}
-
-void user_to_system() {
-  current()->st.user_ticks += get_ticks() - current()->st.elapsed_total_ticks;
-  current()->st.elapsed_total_ticks = get_ticks();
-  return;
-}
-
-void system_to_user() {
-  current()->st.system_ticks += get_ticks() - current()->st.elapsed_total_ticks;
-  current()->st.elapsed_total_ticks = get_ticks();
+  change_context(&current()-> kernel_esp, t->task.kernel_esp);
 }
 
 struct task_struct* current()
