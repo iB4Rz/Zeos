@@ -85,7 +85,7 @@ void init_task1(void)
   init-> PID = 1;
   allocate_DIR(init);
   set_user_pages(init);
-  union task_union *uinit = (union task_union*) uinit;
+  union task_union *uinit = (union task_union*) init;
   tss.esp0 = (DWord)&(uinit -> stack[KERNEL_STACK_SIZE]);
   writeMSR((unsigned long)&(uinit -> stack[KERNEL_STACK_SIZE]), 0x175);
   set_cr3(get_DIR(init));

@@ -10,17 +10,19 @@
 
 #include <zeos_interrupt.h>
 
+extern int zeos_ticks;
+
 Gate idt[IDT_ENTRIES];
 Register    idtR;
 
 char char_map[] =
 {
   '\0','\0','1','2','3','4','5','6',
-  '7','8','9','0','\'','ยก','\0','\0',
+  '7','8','9','0','\'','ก','\0','\0',
   'q','w','e','r','t','y','u','i',
   'o','p','`','+','\0','\0','a','s',
-  'd','f','g','h','j','k','l','รฑ',
-  '\0','ยบ','\0','รง','z','x','c','v',
+  'd','f','g','h','j','k','l','๑',
+  '\0','บ','\0','็','z','x','c','v',
   'b','n','m',',','.','-','\0','*',
   '\0','\0','\0','\0','\0','\0','\0','\0',
   '\0','\0','\0','\0','\0','\0','\0','7',
@@ -29,6 +31,10 @@ char char_map[] =
   '\0','\0','\0','\0','\0','\0','\0','\0',
   '\0','\0'
 };
+
+int write (int fd, char * buffer, int size);
+
+void writeMSR();
 
 void setInterruptHandler(int vector, void (*handler)(), int maxAccessibleFromPL)
 {
@@ -74,10 +80,9 @@ void setTrapHandler(int vector, void (*handler)(), int maxAccessibleFromPL)
   idt[vector].highOffset      = highWord((DWord)handler);
 }
 
-void clock_handler();
 void keyboard_handler();
 void syscall_handler_sysenter();
-void writeMSR();
+void clock_handler();
 
 void setIdt()
 {
@@ -88,29 +93,30 @@ void setIdt()
   set_handlers();
 
   /* ADD INITIALIZATION CODE FOR INTERRUPT VECTOR */
-  setInterruptHandler(32, clock_handler, 0);
-  setInterruptHandler(33, keyboard_handler, 0);
-  writeMSR(__KERNEL_CS, 0x174);
-  writeMSR(INITIAL_ESP, 0x175);
-  writeMSR((unsigned long)syscall_handler_sysenter, 0x176);
+  setInterruptHandler(33,keyboard_handler,0);
+  setInterruptHandler(32,clock_handler,0);
+
+  writeMSR(__KERNEL_CS,0x174);
+  writeMSR(INITIAL_ESP,0x175);
+  writeMSR(syscall_handler_sysenter,0x176);
 
   set_idt_reg(&idtR);
-} 
+}
 
-void keyboard_routine()
+void keyboard_routine() 
 {
   Byte v = inb(0x60);
-  if ((v & 0x80) == 0) {  // 7th bit: Make(0), Break(1)
-    Byte c = char_map[v&0x7F];
-    if (c == '\0') c = 'C';
+  if ((v&0x80) == 0) {    // 7th bit: Make(0), Break(1)
+    char c = char_map[v&0x7f];
+  if (c == '\0') c = 'C';
     printc_xy(0,0,c);
   }
 }
 
-extern int zeos_ticks;
-void clock_routine()
+void clock_routine() 
 {
   zeos_show_clock();
   ++zeos_ticks;
   schedule();
 }
+
