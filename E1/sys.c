@@ -62,6 +62,7 @@ int sys_fork()
 
   struct list_head *first = list_first(&freequeue);
   struct task_struct *child = list_head_to_task_struct(first);
+  list_del(first);
 
   copy_data(current(), (union task_union*)child, 4096);
 
@@ -76,37 +77,30 @@ int sys_fork()
         --pag;
         free_frame(frames[pag]);
       }
+      list_add_tail(&child->list,&freequeue);
       return -ENOMEM;
     }
   }
-  list_del(first);
 
   page_table_entry *parent_pt = get_PT(current());
   page_table_entry *child_pt = get_PT(child);
 
-  for (int pag = 0; pag < NUM_PAG_KERNEL; ++pag) {
+  for (int pag = 0; pag < NUM_PAG_KERNEL; ++pag)
     set_ss_pag(child_pt, pag, get_frame(parent_pt,pag));
-  }
 
-  for (int pag = 0; pag < NUM_PAG_DATA; ++pag) {
+  for (int pag = 0; pag < NUM_PAG_DATA; ++pag)
     set_ss_pag(child_pt, PAG_LOG_INIT_DATA+pag, frames[pag]);
-  }
 
-  for (int pag = PAG_LOG_INIT_CODE; pag < NUM_PAG_CODE + PAG_LOG_INIT_CODE; ++pag) {
+  for (int pag = PAG_LOG_INIT_CODE; pag < NUM_PAG_CODE + PAG_LOG_INIT_CODE; ++pag)
     set_ss_pag(child_pt,pag,get_frame(parent_pt,pag));
-  }
 
   int free_pag = NUM_PAG_KERNEL + NUM_PAG_CODE + NUM_PAG_DATA;
   for (int pag = 0; pag < NUM_PAG_DATA; ++pag) {
     set_ss_pag(parent_pt,free_pag+pag,frames[pag]);
-    unsigned int address1 = (PAG_LOG_INIT_DATA+pag)*PAGE_SIZE;
-    unsigned int address2 = (free_pag+pag)*PAGE_SIZE;
-    copy_data((void *)address1, (void *)address2, PAGE_SIZE);
+    copy_data((void *)((PAG_LOG_INIT_DATA+pag)*PAGE_SIZE),(void *)((free_pag+pag)*PAGE_SIZE),PAGE_SIZE);
     del_ss_pag(parent_pt,free_pag+pag);
   }
-  // Flush TLB
-  set_cr3(get_DIR(current()));
-
+  
   // Flush TLB
   set_cr3(get_DIR(current()));
   child->PID = PID_GL;
@@ -143,7 +137,6 @@ void sys_exit()
 
 int sys_write(int fd, char * buffer, int size) 
 {
-  char bufk[size];
   int error = check_fd(fd,ESCRIPTURA);
   if (error != 0) return error;
   
@@ -152,6 +145,7 @@ int sys_write(int fd, char * buffer, int size)
   // Checks if a user space pointer is valid
   if (!access_ok(VERIFY_READ,buffer,size)) return -EFAULT;
 
+  char bufk[size];
   copy_from_user(buffer,bufk,size);
   return sys_write_console(bufk,size);
 }
@@ -164,7 +158,7 @@ int sys_get_stats(int pid, struct stats *st)
   if (pid < 0) return -EINVAL;
   for (int i = 0; i < NR_TASKS; ++i) {
     if (task[i].task.PID == pid) {
-      task[i].task.st.remaining_ticks = quantum;
+      //task[i].task.st.remaining_ticks = quantum;
       copy_to_user(&(task[i].task.st), st, sizeof(struct stats));
       return 0;
     }

@@ -10,7 +10,7 @@ ENTRY (syscall_sysenter)
     sysenter
 sysenter_ret:
     popl %ebp
-    popl %edx
+    addl $4,%esp
     popl %edx
     popl %ecx
     ret

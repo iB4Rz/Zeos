@@ -25,7 +25,7 @@ struct list_head readyqueue;
 struct task_struct *idle_task;
 void writeMSR();
 void task_switch(union task_union*t);
-void change_context();
+void change_context(unsigned int *ker_esp1,unsigned int ker_esp2);
 
 /* get_DIR - Returns the Page Directory address for task 't' */
 page_table_entry * get_DIR (struct task_struct *t) 
@@ -64,16 +64,15 @@ void cpu_idle(void)
 void init_idle (void)
 {
   struct list_head *first = list_first(&freequeue);
-  list_del(first);
   struct task_struct *idle = list_head_to_task_struct(first);
+  list_del(first);
   idle -> PID  = 0;
   allocate_DIR(idle);
   union task_union *uidle = (union task_union*) idle;
-  uidle -> stack[KERNEL_STACK_SIZE-1] = (unsigned long)&cpu_idle;
+  uidle -> stack[KERNEL_STACK_SIZE-1] = (unsigned long)cpu_idle;
   uidle -> stack[KERNEL_STACK_SIZE-2] = 0;  // register ebp
   idle -> kernel_esp = (unsigned int)&(uidle -> stack[KERNEL_STACK_SIZE-2]);
 
-  idle->quantum = 382;
   init_stats(idle);
   idle_task = idle;
 }
@@ -81,8 +80,8 @@ void init_idle (void)
 void init_task1(void)
 {
   struct list_head *first = list_first(&freequeue);
-  list_del(first);
   struct task_struct *init = list_head_to_task_struct(first);
+  list_del(first);
   init-> PID = 1;
   allocate_DIR(init);
   set_user_pages(init);
@@ -91,7 +90,7 @@ void init_task1(void)
   writeMSR((unsigned long)&(uinit -> stack[KERNEL_STACK_SIZE]), 0x175);
   set_cr3(get_DIR(init));
   
-  init->quantum = 382;
+  init->quantum = 7;
   init_stats(init);
   init->state = ST_RUN;
 }
@@ -127,24 +126,20 @@ void update_sched_data_rr (void)
 
 int needs_sched_rr (void)
 {
-  if (quantum == 0 && !list_empty(&readyqueue)) return 1;
-  if (quantum == 0) quantum=get_quantum(current());
-  return 0;
+  return (quantum <= 0 && !list_empty(&readyqueue));
 }
 
 void update_process_state_rr (struct task_struct *t, struct list_head *dst_queue)
 {
   if (t->state != ST_RUN) list_del(&(t->list));
   if (dst_queue != NULL) {
-    if (t != idle_task) {
-      list_add_tail(&(t->list), dst_queue);
+    if (t != idle_task) list_add_tail(&(t->list), dst_queue);
       if (dst_queue == &readyqueue) {
         t->state = ST_READY;
         t->st.system_ticks += get_ticks() - t->st.elapsed_total_ticks;
         t->st.elapsed_total_ticks = get_ticks();
       }
       else t->state = ST_BLOCKED;
-    }
   }
   else t->state = ST_RUN;
 }
@@ -154,8 +149,8 @@ void sched_next_rr (void)
   struct task_struct *t;
   if (!list_empty(&readyqueue)) {
     struct list_head *first = list_first(&readyqueue);
-    list_del(first);
     t = list_head_to_task_struct(first);
+    //list_del(first);
     update_process_state_rr(t, NULL);
     quantum = get_quantum(t);
     t->st.remaining_ticks = quantum;
@@ -188,7 +183,7 @@ void schedule()
   }
 }
 
-void inner_task_switch(union task_union*t) {
+void inner_task_switch(union task_union *t) {
   tss.esp0 = (DWord)&(t -> stack[KERNEL_STACK_SIZE]);
   writeMSR((unsigned long)&(t -> stack[KERNEL_STACK_SIZE]), 0x175);
   set_cr3(get_DIR(&t->task));

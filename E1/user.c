@@ -16,8 +16,7 @@ int __attribute__ ((__section__(".text.main")))
   //write(1,msg,strlen(msg));
   write(1, "\nBienvenidos a SOA!\n", 20);
   write(1, "Llamada a write con puntero nulo\n", 33);
-  write(1, ((void *)0), 16);
+  //write(1, ((void *)0), 16);
   //perror();
-  while(1) {
-  }
+  while(1);
 }
