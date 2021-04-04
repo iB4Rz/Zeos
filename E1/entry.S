@@ -79,7 +79,21 @@ ENTRY(syscall_handler_sysenter)
       jl sysenter_err
       cmpl $MAX_SYSCALL, %eax
       jg sysenter_err
+      pushl %eax
+      pushl %ecx
+      pushl %edx
+      call user_to_system
+      popl %edx
+      popl %ecx
+      popl %eax
       call *sys_call_table(, %eax, 0x04)
+      pushl %eax
+      pushl %ecx
+      pushl %edx
+      call system_to_user
+      popl %edx
+      popl %ecx
+      popl %eax
       jmp sysenter_fin
 sysenter_err:
       movl $-ENOSYS, %eax
@@ -94,14 +108,10 @@ sysenter_fin:
 
 ENTRY (keyboard_handler)
       SAVE_ALL
-      pushl %eax;
       call user_to_system
-      popl %eax;
       EOI
       call keyboard_routine
-      pushl %eax;
       call system_to_user
-      popl %eax;
       RESTORE_ALL
       iret
 
@@ -124,18 +134,14 @@ ENTRY (writeMSR)
 
 ENTRY (clock_handler)
       SAVE_ALL
-      pushl %eax;
       call user_to_system
-      popl %eax;
       EOI
       call clock_routine
-      pushl %eax;
       call system_to_user
-      popl %eax;
       RESTORE_ALL
       iret
 
-// TASKS
+// TASK SWITCH
 
 ENTRY (task_switch)
       pushl %ebp

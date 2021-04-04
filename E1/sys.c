@@ -7,6 +7,8 @@
 
 #include <io.h>
 
+#include <libc.h>
+
 #include <mm.h>
 
 #include <mm_address.h>
@@ -21,22 +23,13 @@
 
 int PID_GL = 1000;
 
+unsigned int get_ebp();
+
 int check_fd(int fd, int permissions)
 {
   if (fd!=1) return -9; /*EBADF*/
   if (permissions!=ESCRIPTURA) return -13; /*EACCES*/
   return 0;
-}
-
-void user_to_system() {
-  current()->st.user_ticks += get_ticks() - current()->st.elapsed_total_ticks;
-  current()->st.elapsed_total_ticks = get_ticks();
-  return;
-}
-
-void system_to_user() {
-  current()->st.system_ticks += get_ticks() - current()->st.elapsed_total_ticks;
-  current()->st.elapsed_total_ticks = get_ticks();
 }
 
 int sys_ni_syscall()
@@ -49,7 +42,16 @@ int sys_getpid()
 	return current()->PID;
 }
 
-unsigned int get_ebp();
+void user_to_system() {
+  current()->st.user_ticks += get_ticks() - current()->st.elapsed_total_ticks;
+  current()->st.elapsed_total_ticks = get_ticks();
+  return;
+}
+
+void system_to_user() {
+  current()->st.system_ticks += get_ticks() - current()->st.elapsed_total_ticks;
+  current()->st.elapsed_total_ticks = get_ticks();
+}
 
 int ret_from_fork()
 {
@@ -107,16 +109,18 @@ int sys_fork()
   ++PID_GL;
   if (PID_GL == PID_GL + NR_TASKS) PID_GL = 1000;
 
-  unsigned int ebp = (unsigned int) get_ebp();
-  ebp -= (unsigned int)current() + (unsigned int)child;
-  *(DWord*)(ebp) = (DWord)ret_from_fork;
-  *(DWord*)(ebp-4) = 0;
+
+  unsigned int ebp = get_ebp();
+  ebp -= (unsigned int)current();
+  ebp += (unsigned int)child;
+  *(unsigned int *)ebp = (unsigned int)ret_from_fork;
+  *(unsigned int*)(ebp-4) = 0;
   child->kernel_esp = ebp-4;
 
   list_add_tail(&(child->list),&readyqueue);
 
   child->state = ST_READY;
-  
+
   return child->PID;
 }
 

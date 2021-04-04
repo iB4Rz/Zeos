@@ -12,6 +12,9 @@
 
 #define NR_TASKS      10
 #define KERNEL_STACK_SIZE	1024
+#define QUANTUM 7
+
+int quantum;  // Number of ticks current proccess
 
 enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
 

@@ -44,26 +44,36 @@ int strlen(char *a)
   return i;
 }
 
+void printf(char *msg) {
+  write(1,msg,strlen(msg));
+}
+
 void perror()
 {
   switch (errno) {
+    case ESRCH:
+      printf("<<ERROR>> No such process\n");
+    break;
     case EBADF:
-      write(1, "<<ERROR>> Bad file number\n", 26);
+      printf("<<ERROR>> Bad file number\n");
+    break;
+      case ENOMEM:
+      printf("<<ERROR>> Not enough core\n");
     break;
     case EACCES:
-      write(1, "<<ERROR>> Permission denied\n", 28);
+      printf("<<ERROR>> Permission denied\n");
     break;
     case EFAULT:
-      write(1, "<<ERROR>> Bad adress\n", 21);
+      printf("<<ERROR>> Bad adress\n");
     break;
     case EINVAL:
-      write(1, "<<ERROR>> Invalid argument\n", 27);
+      printf("<<ERROR>> Invalid argument\n");
+    break;
+    case ENOSYS:
+      printf("<<ERROR>> Function not implemented\n");
     break;
     default:
-      write(1, "<<ERROR>> Unknown error\n", 24);
+      printf("<<ERROR>> Undefined error\n");
     break;
   }
-
-  // falta ENOMEM
-
 }

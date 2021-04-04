@@ -39,7 +39,6 @@ page_table_entry * get_PT (struct task_struct *t)
 	return (page_table_entry *)(((unsigned int)(t->dir_pages_baseAddr->bits.pbase_addr))<<12);
 }
 
-
 int allocate_DIR(struct task_struct *t) 
 {
 	int pos;
@@ -65,12 +64,12 @@ void init_idle (void)
 {
   struct list_head *first = list_first(&freequeue);
   struct task_struct *idle = list_head_to_task_struct(first);
-  list_del(first);
+  list_del(first);  // Delete from the freequeue
   idle -> PID  = 0;
   allocate_DIR(idle);
   union task_union *uidle = (union task_union*) idle;
   uidle -> stack[KERNEL_STACK_SIZE-1] = (unsigned long)cpu_idle;
-  uidle -> stack[KERNEL_STACK_SIZE-2] = 0;  // register ebp
+  uidle -> stack[KERNEL_STACK_SIZE-2] = 0;  // fake ebp
   idle -> kernel_esp = (unsigned int)&(uidle -> stack[KERNEL_STACK_SIZE-2]);
 
   init_stats(idle);
@@ -81,7 +80,7 @@ void init_task1(void)
 {
   struct list_head *first = list_first(&freequeue);
   struct task_struct *init = list_head_to_task_struct(first);
-  list_del(first);
+  list_del(first);  // Delete from the freequeue
   init-> PID = 1;
   allocate_DIR(init);
   set_user_pages(init);
@@ -90,20 +89,20 @@ void init_task1(void)
   writeMSR((unsigned long)&(uinit -> stack[KERNEL_STACK_SIZE]), 0x175);
   set_cr3(get_DIR(init));
   
-  init->quantum = 7;
+  init -> quantum = QUANTUM;
   init_stats(init);
-  init->state = ST_RUN;
+  init -> state = ST_RUN;
 }
 
 void init_stats(struct task_struct *t) 
 {
-  t->st.user_ticks = 0;
-  t->st.system_ticks = 0;
-  t->st.blocked_ticks = 0;
-  t->st.ready_ticks = 0;
-  t->st.elapsed_total_ticks = get_ticks();
-  t->st.total_trans = 0;
-  t->st.remaining_ticks = t->quantum;
+  t->st.user_ticks = 0;       // Total ticks executing user code
+  t->st.system_ticks = 0;     // Total ticks executing system code
+  t->st.blocked_ticks = 0;    // Total ticks in the blocked state
+  t->st.ready_ticks = 0;      // Total ticks in the ready state
+  t->st.elapsed_total_ticks = get_ticks();  // Total ticks since the beginning
+  t->st.total_trans = 0;      // Total transitions ready --> run
+  t->st.remaining_ticks = t->quantum; // Remaining quantum
 }
 
 int get_quantum(struct task_struct *t)
@@ -115,8 +114,6 @@ void set_quantum(struct task_struct *t, int new_quantum)
 {
   t->quantum = new_quantum;
 }
-
-int quantum = 0;
 
 void update_sched_data_rr (void) 
 {
@@ -136,7 +133,7 @@ void update_process_state_rr (struct task_struct *t, struct list_head *dst_queue
     if (t != idle_task) list_add_tail(&(t->list), dst_queue);
       if (dst_queue == &readyqueue) {
         t->state = ST_READY;
-        t->st.system_ticks += get_ticks() - t->st.elapsed_total_ticks;
+        current()->st.system_ticks += get_ticks() - current()->st.elapsed_total_ticks;
         t->st.elapsed_total_ticks = get_ticks();
       }
       else t->state = ST_BLOCKED;
@@ -150,7 +147,6 @@ void sched_next_rr (void)
   if (!list_empty(&readyqueue)) {
     struct list_head *first = list_first(&readyqueue);
     t = list_head_to_task_struct(first);
-    //list_del(first);
     update_process_state_rr(t, NULL);
     quantum = get_quantum(t);
     t->st.remaining_ticks = quantum;
@@ -166,6 +162,7 @@ void sched_next_rr (void)
 
 void init_sched()
 {
+  quantum = QUANTUM;
   INIT_LIST_HEAD(&freequeue);
   for (int i = 0; i < NR_TASKS; ++i) {
     task[i].task.PID = -1;

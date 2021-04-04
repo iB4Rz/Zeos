@@ -14,6 +14,10 @@ void itoa(int a, char *b);
 
 int strlen(char *a);
 
+void printf(char *msg);
+
+void printi(int i);
+
 int getpid();
 
 int fork();
@@ -23,5 +27,9 @@ void exit();
 void perror();
 
 int gettime();
+
+int get_stats(int pid, struct stats *st);
+
+void print_stats(int pid);
 
 #endif  /* __LIBC_H__ */

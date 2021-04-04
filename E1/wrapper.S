@@ -1,7 +1,7 @@
 #include <asm.h>
 #include <segment.h>
 
-ENTRY (syscall_sysenter)
+sysenter_call:
     pushl %ecx
     pushl %edx
     pushl $sysenter_ret
@@ -23,7 +23,7 @@ ENTRY (write)
     movl 12(%ebp), %ecx
     movl 16(%ebp), %edx
     movl $0x04, %eax
-    call syscall_sysenter
+    call sysenter_call
     popl %ebx
     cmp  $0,%eax
     jl sysenter_error
@@ -35,7 +35,7 @@ ENTRY (gettime)
     pushl %ebp
     movl %esp, %ebp
     movl $0x0A, %eax
-    call syscall_sysenter
+    call sysenter_call
     cmp  $0,%eax
     jl sysenter_error
     movl %ebp, %esp
@@ -46,7 +46,7 @@ ENTRY (getpid)
     pushl %ebp
     movl %esp, %ebp
     movl $0x14, %eax
-    call syscall_sysenter
+    call sysenter_call
     cmp  $0,%eax
     jl sysenter_error
     movl %ebp, %esp
@@ -57,7 +57,7 @@ ENTRY (fork)
     pushl %ebp
     movl %esp, %ebp
     movl $0x02, %eax
-    call syscall_sysenter
+    call sysenter_call
     cmp  $0,%eax
     jl sysenter_error
     movl %ebp, %esp
@@ -68,7 +68,7 @@ ENTRY (exit)
     pushl %ebp
     movl %esp, %ebp
     movl $0x01, %eax
-    call syscall_sysenter
+    call sysenter_call
     cmp  $0,%eax
     jl sysenter_error
     movl %ebp, %esp
@@ -82,7 +82,7 @@ ENTRY(get_stats)
     mov 8(%ebp), %ebx
     mov 12(%ebp), %ecx
     movl $0x23, %eax
-    call syscall_sysenter
+    call sysenter_call
     popl %ebx
     cmp  $0,%eax
     jl sysenter_error
