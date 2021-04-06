@@ -1,7 +1,72 @@
 #include <asm.h>
 #include <segment.h>
 
-sysenter_call:
+ENTRY (write)
+    pushl %ebp
+    movl %esp, %ebp
+    pushl %ebx
+    movl 8(%ebp), %ebx
+    movl 12(%ebp), %ecx
+    movl 16(%ebp), %edx
+    movl $0x04, %eax
+    call sysenter_call
+    popl %ebx
+    cmp  $0,%eax
+    jl sysenter_error
+    jmp end
+
+ENTRY (gettime)
+    pushl %ebp
+    movl %esp, %ebp
+    movl $0x0A, %eax
+    call sysenter_call
+    cmp  $0,%eax
+    jl sysenter_error
+    jmp end
+
+ENTRY (getpid)
+    pushl %ebp
+    movl %esp, %ebp
+    movl $0x14, %eax
+    call sysenter_call
+    cmp  $0,%eax
+    jl sysenter_error
+    jmp end
+
+ENTRY (fork)
+    pushl %ebp
+    movl %esp, %ebp
+    movl $0x02, %eax
+    call sysenter_call
+    cmp  $0,%eax
+    jl sysenter_error
+    jmp end
+
+ENTRY (exit)
+    pushl %ebp
+    movl %esp, %ebp
+    movl $0x01, %eax
+    call sysenter_call
+    cmp  $0,%eax
+    jl sysenter_error
+    jmp end
+
+ENTRY(get_stats)
+    push %ebp
+    movl %esp, %ebp
+    pushl %ebx
+    movl 8(%ebp), %ebx
+    movl 12(%ebp), %ecx
+    movl $0x23, %eax
+    call sysenter_call
+    popl %ebx
+    cmp  $0,%eax
+    jl sysenter_error
+    jmp end
+
+// Factorizations
+
+ENTRY(sysenter_call)
     pushl %ecx
     pushl %edx
     pushl $sysenter_ret
@@ -15,85 +80,13 @@ sysenter_ret:
     popl %ecx
     ret
 
-ENTRY (write)
-    pushl %ebp
-    movl %esp, %ebp
-    pushl %ebx
-    movl 8(%ebp), %ebx
-    movl 12(%ebp), %ecx
-    movl 16(%ebp), %edx
-    movl $0x04, %eax
-    call sysenter_call
-    popl %ebx
-    cmp  $0,%eax
-    jl sysenter_error
-    movl %ebp, %esp
-    popl %ebp
-    ret
-
-ENTRY (gettime)
-    pushl %ebp
-    movl %esp, %ebp
-    movl $0x0A, %eax
-    call sysenter_call
-    cmp  $0,%eax
-    jl sysenter_error
-    movl %ebp, %esp
-    popl %ebp
-    ret
-
-ENTRY (getpid)
-    pushl %ebp
-    movl %esp, %ebp
-    movl $0x14, %eax
-    call sysenter_call
-    cmp  $0,%eax
-    jl sysenter_error
-    movl %ebp, %esp
-    popl %ebp
-    ret
-
-ENTRY (fork)
-    pushl %ebp
-    movl %esp, %ebp
-    movl $0x02, %eax
-    call sysenter_call
-    cmp  $0,%eax
-    jl sysenter_error
-    movl %ebp, %esp
-    popl %ebp
-    ret
-
-ENTRY (exit)
-    pushl %ebp
-    movl %esp, %ebp
-    movl $0x01, %eax
-    call sysenter_call
-    cmp  $0,%eax
-    jl sysenter_error
-    movl %ebp, %esp
-    popl %ebp
-    ret
-
-ENTRY(get_stats)
-    push %ebp
-    mov %esp, %ebp
-    pushl %ebx
-    mov 8(%ebp), %ebx
-    mov 12(%ebp), %ecx
-    movl $0x23, %eax
-    call sysenter_call
-    popl %ebx
-    cmp  $0,%eax
-    jl sysenter_error
-    movl %ebp, %esp
-    popl %ebp
-    ret
-
 sysenter_error:
     neg %eax
-    mov %eax, errno
-    mov $-1, %eax
+    movl %eax, errno
+    movl $-1, %eax
+    jmp end
+
+end:
     movl %ebp, %esp
     popl %ebp
     ret

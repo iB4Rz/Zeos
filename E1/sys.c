@@ -23,6 +23,8 @@
 
 int PID_GL = 1000;
 
+extern int quantum;
+
 unsigned int get_ebp();
 
 int check_fd(int fd, int permissions)
@@ -43,14 +45,14 @@ int sys_getpid()
 }
 
 void user_to_system() {
-  current()->st.user_ticks += get_ticks() - current()->st.elapsed_total_ticks;
-  current()->st.elapsed_total_ticks = get_ticks();
+  current()-> st.user_ticks += get_ticks() - current()->st.elapsed_total_ticks;
+  current()-> st.elapsed_total_ticks = get_ticks();
   return;
 }
 
 void system_to_user() {
-  current()->st.system_ticks += get_ticks() - current()->st.elapsed_total_ticks;
-  current()->st.elapsed_total_ticks = get_ticks();
+  current()-> st.system_ticks += get_ticks() - current()->st.elapsed_total_ticks;
+  current()-> st.elapsed_total_ticks = get_ticks();
 }
 
 int ret_from_fork()
@@ -114,7 +116,7 @@ int sys_fork()
   ebp -= (unsigned int)current();
   ebp += (unsigned int)child;
   *(unsigned int *)ebp = (unsigned int)ret_from_fork;
-  *(unsigned int*)(ebp-4) = 0;
+  *(unsigned int *)(ebp-4) = 0; // fake ebp
   child->kernel_esp = ebp-4;
 
   list_add_tail(&(child->list),&readyqueue);
@@ -154,15 +156,12 @@ int sys_write(int fd, char * buffer, int size)
   return sys_write_console(bufk,size);
 }
 
-extern int quantum;
-
 int sys_get_stats(int pid, struct stats *st)
 {
   if(!access_ok(VERIFY_WRITE, st, sizeof(struct stats))) return -EFAULT;
   if (pid < 0) return -EINVAL;
   for (int i = 0; i < NR_TASKS; ++i) {
     if (task[i].task.PID == pid) {
-      //task[i].task.st.remaining_ticks = quantum;
       copy_to_user(&(task[i].task.st), st, sizeof(struct stats));
       return 0;
     }

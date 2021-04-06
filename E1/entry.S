@@ -159,12 +159,12 @@ ENTRY (task_switch)
       ret
 
 ENTRY (change_context)
-      movl 4(%esp), %eax
-      movl %ebp, (%eax)
+      movl 4(%esp), %edx
+      movl %ebp, (%edx)
       movl 8(%esp), %esp
       popl %ebp
       ret
 
 ENTRY (get_ebp)
-      mov %ebp, %eax
+      movl %ebp, %eax
       ret

@@ -44,22 +44,22 @@ void print_stats(int pid) {
   printf("\n*************************\n");
 }
 
-int fibonacci(int n) {
+int fib_work(int n) {
   if (n <= 1) return 1;
-  else return fibonacci(n-1) + fibonacci(n-2);
+  else return fib_work(n-1) + fib_work(n-2);
 }
 
-void work() {
+void test() {
   int pid = fork();
 
   if (pid == 0) {
-    fibonacci(25);
+    fib_work(25);
     print_stats(getpid());
     exit();
   }
   pid = fork();
   if (pid == 0) {
-    fibonacci(32);
+    fib_work(32);
     print_stats(getpid());
     exit();
   }
@@ -78,6 +78,6 @@ int __attribute__ ((__section__(".text.main")))
   printf("\n----------------------\n");
   printf("\nEjecutando tests: ");
   fork_test();
-  work();
+  test();
   while(1);
 }
