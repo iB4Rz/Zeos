@@ -1,0 +1,13 @@
+
+1.
+    Yes they can, looking the 3rd line of the text, says: "objects are system resources that two or more user-mode processes can share".
+    
+2.
+    The mechanism that ensures a process to hold enough privileges to access a given resourse in windows is the security descriptor.
+    Security descriptors are data structures of security information associated with a securable object.
+    Is in charge of giving grant and deny access to given resourse.
+
+3. 
+    The kind of devices that are represented by file objects in Windows are the physical devices,
+    in kernel mode, drivers must create at least a device object for each device. And despite the differences 
+    of other component of the Windows executive, are they also manipulated as objects.

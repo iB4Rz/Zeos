@@ -1,0 +1,98 @@
+
+
+1.
+    a) Fitxer Entry.S, línia 80, dins de la funció "syscall_handler_sysenter".
+    Serveix per a control d'errors: Si posem a %eax un número de syscall més gran que el tamany
+    de la sys_call_table, saltarem i donarem el error "-ENOSYS".
+
+    b) Fitxer sched.c, línia 55, dins de la funció "cpu_idle".
+    Es una instrucció en assemble en inline, serveix per permetre interrupcions. Això es perque
+    la funció "cpu_idle" es un procés kernel, i per defecte en x86, les interrupcions es
+    desactiven en mode kernel.
+
+    c) Es troba en la direcció lògica 0x000110e0. L'ha he trobat fent "nm system | grep "general_protection_routine"
+    La seva direcció física es la mateixa que la lògica, ja que en zeos les funcions de kernel tenen la mateixa
+    direcció física que lògica. amb "info tab" es pot comprobar.
+
+2.
+    Plantejament: Tenir un vector de syscalls per cada procés al qual cada cop que es crida a una "syscall" s'actualitza sumant
+    1 a la posició corresponent a la syscall.
+
+    a) Alguns possibles errors podrien ser:
+        - size > MAX_SYSCALL, ja que el vector ha de tenir almenys tantes posicions com syscalls.
+        - size < 0, ja que ha de ser positiu
+    
+    b) S'ha de crear un vector "sys_counter", inicialitzar-lo a 0 amb MAX_SYSCALL posicions quan es crea el procés.
+
+    c) S'ha de modificar el task_struct afegint-li el nou vector. Afegir que ara al "syscall_handler_sysenter" cal
+    passar-li també un punter al pcb del procés, per poder trobar facilment el vector syscalls_proc.
+
+    d) Des del "syscall_handler_sysenter". Abans de fer el "call *sys_call_table(,%eax,4), s'actualitza la posició
+    [%eax*8] del vector de syscalls del procés amb un +1.
+
+    e) Entre les línies 81 i 82 de Entry.S.
+
+    ENTRY(syscall_number)
+        pushl %ebp
+        movl %esp, %ebp
+        pushl %ebx
+        movl 8(%ebp), %ebx
+        movl 12(%ebp), %ecx
+        movl $16, %eax
+        pushl %ecx
+        pushl %edx
+        pushl $sysenter_ret
+        pushl %ebp
+        movl %esp, %ebp
+        sysenter
+        sysenter_ret:
+        popl %ebp
+        addl $4,%esp
+        popl %edx
+        popl %ecx
+        popl %ebx
+        cmp $0, %eax
+        jl sysenter_error
+        movl %ebp, %esp
+        popl %ebp
+        ret
+
+    sysenter_error:
+        neg %eax
+        mov %eax, errno
+        mov $-1, %eax
+        movl %ebp, %esp
+        popl %ebp
+        ret
+
+
+    int syscall_number(unsigned long *syscalls, int size)
+    {
+        if (size > MAX_SYSCALL) return -1;
+        struct task_struct *t = current();
+        for (int i = 0; i < size; ++)
+            syscalls[8+i] = t->sys_counter[8+i];
+        return 0;
+    }
+
+3.
+    a) A part de les mencionades anteriorment, afegiria un enter en tots els task_struct dels processos, on vindria 
+    a ser el identificador per trobar la seva pila en el vector de piles.
+
+    IDEA: la idea esta en el task_switch y ya no solo le pasas un parametro, sino dos, el struct y la pila, entonces
+    viendo la pila hay un ebp (kernel_esp apunta ahi), despues ret, y luego el struct y la pila, entonces si sumamos
+    al kernel_esp 8 encontraremos el estruct del actual proceso.
+
+
+
+4.
+    Yes, as the text says in the 3rd line, objects are system resources that two or more user-mode processes can share.
+
+    A security descriptor contains the security information associated with a securable object. A security descriptor
+    consist of a SECURITY_DESCRIPTOR structure and its associated security information.
+
+    Kernel-mode drivers must create at least one device object for each device, with the following exceptions:
+    - Minidrivers that have an associated class or port driver do not have to create their own device objects. 
+    The class or port driver creates the device objects, and dispatches operations to the minidriver.
+    - Drivers that are part of device type-specific subsystems, such as NDIS miniport drivers, have their device objects 
+    created by the subsystem.

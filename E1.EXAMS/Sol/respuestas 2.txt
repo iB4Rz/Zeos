@@ -1,0 +1,89 @@
+
+1.
+    a) La funció prepare_params afegida al wrappers2.S té aquesta pinta:
+    
+        ENTRY(prepare_params)
+            movl 8(%ebp), %ebx
+            movl 12(%ebp), %ecx
+            movl 16(%ebp), %edx
+            movl 20(%ebp), %esi
+            movl 24(%ebp), %edi
+            ret
+    
+    El que realitza es el pas dels parametres de un wrapper al registres corresponents, ja que els parametres
+    s'ha assignan a registres en aquest ordre ebx,ecx,edx,esi,edi, pero està limitat a un total de 5 parametres.
+
+    b) He afegit el wrappers2.o al USROBJ, que son els fitxer de part del usuario i després he afegit :
+        wrappers2.s: wrappers2.S $(INCLUDEDIR)/asm.h $(INCLUDEDIR)/segment.h
+	    $(CPP) $(ASMFLAGS) -o $@ $<
+
+    c) 
+        ENTRY (write)
+        pushl %ebp
+        movl %esp, %ebp
+        pushl %ebx
+        call prepare_params
+        movl $0x04, %eax
+        call sysenter_call
+        popl %ebx
+        cmp  $0,%eax
+        jl sysenter_error
+        movl %ebp, %esp
+        popl %ebp
+        ret
+
+    d) Si, las sysenter_call i la detecció d'errors.
+
+    sysenter_call:
+        pushl %ecx
+        pushl %edx
+        pushl $sysenter_ret
+        pushl %ebp
+        movl %esp, %ebp
+        sysenter
+    sysenter_ret:
+        popl %ebp
+        addl $4,%esp
+        popl %edx
+        popl %ecx
+        ret
+
+    sysenter_error:
+        neg %eax
+        mov %eax, errno
+        mov $-1, %eax
+        movl %ebp, %esp
+        popl %ebp
+        ret
+
+
+2.
+    a) L'error es comprobar que el punter ebp està en una direcció vàlida en la memòria de usuari.
+    Amb "access_ok" es comproba.
+
+    b) 
+
+    c)
+
+    d)
+
+    ENTRY (getEBP)
+        pushl %ebp
+        movl %esp, %ebp
+        movl 8(%ebp), %ebx
+        movl $14, %eax
+        call sysenter_call
+        cmp  $0,%eax
+        jl sysenter_error
+        movl %ebp, %esp
+        popl %ebp
+        ret
+
+    e)
+
+    int sys_getEBP (unsigned long *current_EBP)
+    {
+        
+        current_EBP = ebp;
+
+    }

@@ -166,5 +166,5 @@ ENTRY (change_context)
       ret
 
 ENTRY (get_ebp)
-      mov %ebp, %eax
+      movl %ebp, %eax
       ret

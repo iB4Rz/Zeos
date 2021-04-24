@@ -19,9 +19,7 @@ ENTRY (write)
     pushl %ebp
     movl %esp, %ebp
     pushl %ebx
-    movl 8(%ebp), %ebx
-    movl 12(%ebp), %ecx
-    movl 16(%ebp), %edx
+    call prepare_params
     movl $0x04, %eax
     call sysenter_call
     popl %ebx
@@ -79,8 +77,8 @@ ENTRY(get_stats)
     push %ebp
     mov %esp, %ebp
     pushl %ebx
-    mov 8(%ebp), %ebx
-    mov 12(%ebp), %ecx
+    movl 8(%ebp), %ebx
+    movl 12(%ebp), %ecx
     movl $0x23, %eax
     call sysenter_call
     popl %ebx

@@ -67,6 +67,7 @@ void work() {
   return;
 }
 
+int answerToEverything();
 
 int __attribute__ ((__section__(".text.main")))
   main(void)
@@ -77,7 +78,9 @@ int __attribute__ ((__section__(".text.main")))
   printf("\n--Bienvenidos a SOA!--");
   printf("\n----------------------\n");
   printf("\nEjecutando tests: ");
-  fork_test();
-  work();
+  int value = answerToEverything();
+  printi(value);
+  //fork_test();
+  //work();
   while(1);
 }
