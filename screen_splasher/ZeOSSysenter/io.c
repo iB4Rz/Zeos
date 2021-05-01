@@ -45,6 +45,7 @@ void printc(char c)
   }
 }
 
+// mx, my por referencia
 void printc_xy(Byte mx, Byte my, char c)
 {
   Byte cx, cy;
