@@ -74,6 +74,7 @@ ENTRY(clock_handler)
       pushl %eax;
       call user_to_system;
       popl %eax;
+      call printScreen;
       EOI
       call clock_routine;
       pushl %eax;

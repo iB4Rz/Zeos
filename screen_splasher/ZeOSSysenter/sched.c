@@ -33,6 +33,12 @@ extern struct list_head blocked;
 struct list_head freequeue;
 // Ready queue
 struct list_head readyqueue;
+// Focus
+struct Screen *focus;
+// Screen queue
+struct list_head screen_queue;
+// Screen vector
+struct Screen *vscreens[NR_SCREENS];
 
 void init_stats(struct stats *s)
 {
@@ -207,6 +213,29 @@ void init_task1(void)
   setMSR(0x175, 0, (unsigned long)&(uc->stack[KERNEL_STACK_SIZE]));
 
   set_cr3(c->dir_pages_baseAddr);
+
+  // Screen 0
+  INIT_LIST_HEAD(&screen_queue);
+  c->screens[0] = 0;
+  for (int i = 1; i < NR_PROC_SCREENS; ++i) c->screens[i] = -1;
+  for (int i = 0; i < NR_SCREENS; ++i) vscreens[i] = NULL;
+  page_table_entry *pt = get_PT(c);
+  for (int pag = 0; pag < NR_SCREENS; ++pag) {
+    set_ss_pag(pt,PAG_LOG_INIT_SCREEN+pag, alloc_frame());
+    pt[PAG_LOG_INIT_SCREEN+pag].bits.user = 0; // Only SO can access
+  }
+  struct Screen *ns = (struct Screen*) (PAG_LOG_INIT_SCREEN*PAGE_SIZE);
+  vscreens[0] = ns;
+  list_add_tail(&(ns->list), &screen_queue);
+  ns->x = 1; ns->y = 0;
+  ns->current_format = 0x02;
+  ns->num_refs = 1;
+  Word w = (Word) (' ' & 0x00FF) | 0x0200;
+  screenToolbar(ns,c->PID,0);
+  for (int i = 1; i < 25; ++i)
+    for (int j = 0; j < 80; ++j)
+      ns->display[i][j] = w;
+  focus = ns;
 }
 
 void init_freequeue()
@@ -241,6 +270,11 @@ struct task_struct* list_head_to_task_struct(struct list_head *l)
   return (struct task_struct*)((int)l&0xfffff000);
 }
 
+struct Screen* list_head_to_screen(struct list_head *l)
+{
+  return (struct Screen*)((int)l&0xfffff000);
+}
+
 /* Do the magic of a task switch */
 void inner_task_switch(union task_union *new)
 {
@@ -256,11 +290,58 @@ void inner_task_switch(union task_union *new)
   switch_stack(&current()->register_esp, new->task.register_esp);
 }
 
-
 /* Force a task switch assuming that the scheduler does not work with priorities */
 void force_task_switch()
 {
   update_process_state_rr(current(), &readyqueue);
 
   sched_next_rr();
+}
+
+void changeFocus(struct list_head *lh) {
+  if(list_empty(&screen_queue)) {
+    focus = NULL;
+    // Print empty screen
+    Word w = (Word) (' ' & 0x00FF) | 0x0200;
+    // Toolbar
+    for (int y = 0; y < 80; ++y) printc_xy(0,y,' ' | 0x7200);
+    // Black screen
+    for (int i = 1; i < 25; ++i)
+      for (int j = 0; j < 80; ++j)
+        printc_xy(i,j,w);
+  }
+  else {
+    if (lh == (&screen_queue)) lh = (&screen_queue)->next;
+    focus = list_head_to_screen(lh);
+  }
+}
+
+void screenToolbar(struct Screen *ns, int pid, int idScr) {
+  for (int y = 0; y < 80; ++y) ns->display[0][y] = ' ' | 0x7200;
+
+  // Screen id
+  ns->display[0][22] = 'S' | 0x7000;
+  ns->display[0][23] = 'C' | 0x7000;
+  ns->display[0][24] = 'R' | 0x7000;
+  ns->display[0][25] = ':' | 0x7000;
+  ns->display[0][26] = ' ' | 0x7000;
+  if (idScr < 10) ns->display[0][27] = (idScr+'0') | 0x7000;
+  else {
+    ns->display[0][27] = ((idScr/10)+'0') | 0x7000;
+    ns->display[0][28] = ((idScr%10)+'0') | 0x7000;
+  }
+  
+  // Pid 
+  ns->display[0][45] = 'P' | 0x7000;
+  ns->display[0][46] = 'I' | 0x7000;
+  ns->display[0][47] = 'D' | 0x7000;
+  ns->display[0][48] = ':' | 0x7000;
+  ns->display[0][49] = ' ' | 0x7000;
+  if (pid == 1) ns->display[0][50] = (1+ '0') | 0x7000;
+  else {
+    ns->display[0][50] = ((pid/1000)   + '0') | 0x7000;
+    ns->display[0][51] = ((pid/100)%10 + '0') | 0x7000;
+    ns->display[0][52] = ((pid/10)%10  + '0') | 0x7000;
+    ns->display[0][53] = ((pid%10)     + '0') | 0x7000;
+  }
 }

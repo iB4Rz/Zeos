@@ -24,7 +24,7 @@ void * get_ebp();
 
 int check_fd(int fd, int permissions)
 {
-  if (fd!=1) return -EBADF; 
+  if (fd < 0 || fd >= NR_PROC_SCREENS || current()->screens[fd] == -1) return -EBADF; 
   if (permissions!=ESCRIPTURA) return -EACCES; 
   return 0;
 }
@@ -108,6 +108,17 @@ int sys_fork(void)
   {
     set_ss_pag(process_PT, pag, get_frame(parent_PT, pag));
   }
+  
+  for (int pag = 0; pag < NR_SCREENS; ++pag) {
+    set_ss_pag(process_PT, PAG_LOG_INIT_SCREEN + pag, get_frame(parent_PT, PAG_LOG_INIT_SCREEN+pag));
+    process_PT[PAG_LOG_INIT_SCREEN + pag].bits.user = 0;
+  }
+
+  for (int pag = 0; pag < NR_PROC_SCREENS; ++pag) {
+    if(current()->screens[pag] != -1)
+    ++vscreens[current()->screens[pag]]->num_refs;
+  }
+
   for (pag=0; pag<NUM_PAG_CODE; pag++)
   {
     set_ss_pag(process_PT, PAG_LOG_INIT_CODE+pag, get_frame(parent_PT, PAG_LOG_INIT_CODE+pag));
@@ -157,8 +168,7 @@ char localbuffer [TAM_BUFFER];
 int bytes_left;
 int ret;
 
-	if ((ret = check_fd(fd, ESCRIPTURA)))
-		return ret;
+	if ((ret = check_fd(fd, ESCRIPTURA))) return ret;
 	if (nbytes < 0)
 		return -EINVAL;
 	if (!access_ok(VERIFY_READ, buffer, nbytes))
@@ -167,24 +177,37 @@ int ret;
 	bytes_left = nbytes;
 	while (bytes_left > TAM_BUFFER) {
 		copy_from_user(buffer, localbuffer, TAM_BUFFER);
-		ret = sys_write_console(localbuffer, TAM_BUFFER);
+		ret = sys_write_console(fd,localbuffer, TAM_BUFFER);
 		bytes_left-=ret;
 		buffer+=ret;
 	}
 	if (bytes_left > 0) {
 		copy_from_user(buffer, localbuffer,bytes_left);
-		ret = sys_write_console(localbuffer, bytes_left);
+		ret = sys_write_console(fd,localbuffer, bytes_left);
 		bytes_left-=ret;
 	}
 	return (nbytes-bytes_left);
 }
-
 
 extern int zeos_ticks;
 
 int sys_gettime()
 {
   return zeos_ticks;
+}
+
+int sys_close(int fd) {
+  if (fd < 0 || fd >= NR_PROC_SCREENS || current()->screens[fd] == -1) return -EBADF;
+  int id = current()->screens[fd];
+  struct Screen *ns = vscreens[id];
+  current()->screens[fd] = -1;
+  if (--ns->num_refs == 0) {
+    struct list_head *lh = (&ns->list)->next;
+    list_del(&ns->list);
+    vscreens[id] = NULL;
+    if (focus == ns) changeFocus(lh);
+  }
+  return 0;
 }
 
 void sys_exit()
@@ -205,6 +228,9 @@ void sys_exit()
   
   current()->PID=-1;
   
+  for (int i = 0; i < NR_PROC_SCREENS; ++i) {
+    if (current()->screens[i] !=- 1) sys_close(i);
+  }
   /* Restarts execution of the next process */
   sched_next_rr();
 }
@@ -235,4 +261,40 @@ int sys_get_stats(int pid, struct stats *st)
     }
   }
   return -ESRCH; /*ESRCH */
+}
+
+int sys_createScreen() {
+  int fd = -1;
+  for (int i = 0; i < NR_PROC_SCREENS; ++i) {
+    if (current()->screens[i] == -1)
+    { fd = i; break; }
+  }
+  if (fd == -1) return -EMFILE;
+  int id = -1;
+  for (int i = 0; i < NR_SCREENS; ++i) {
+    if (vscreens[i] == NULL) 
+    { id = i; break; }
+  }
+  if (id == -1) return -EMFILE;   // No more screens can be created
+  int page = PAG_LOG_INIT_SCREEN+id;
+  struct Screen *ns = (struct Screen*)(page*PAGE_SIZE);
+  vscreens[id] = ns;
+  current()->screens[fd] = id;
+  list_add_tail(&(ns->list), &screen_queue);
+  ns->x = 1; ns->y = 0;
+  ns->current_format = 0x02;
+  ns->num_refs = 1;
+  // Inicialization screen
+  screenToolbar(ns,current()->PID,id);
+  Word ch = (Word) (' ' & 0x00FF) | 0x0200;
+  for (int i = 1; i < 25; ++i)
+    for (int j = 0; j < 80; ++j)
+      ns->display[i][j] = ch;
+  return fd;
+}
+
+int sys_setFocus(int fd) {
+  if (fd < 0 || fd >= NR_PROC_SCREENS || current()->screens[fd] == -1) return -EBADF;
+  focus = vscreens[current()->screens[fd]];
+  return 0;
 }

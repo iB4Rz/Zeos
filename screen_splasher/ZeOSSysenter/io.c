@@ -13,7 +13,7 @@
 #define NUM_COLUMNS 80
 #define NUM_ROWS    25
 
-Byte x, y=19;
+Byte x, y = 0;
 
 /* Read a byte from 'port' */
 Byte inb (unsigned short port)
@@ -24,9 +24,11 @@ Byte inb (unsigned short port)
   return v;
 }
 
-void printc(char c)
+void printc(Word w)
 {
-     __asm__ __volatile__ ( "movb %0, %%al; outb $0xe9" ::"a"(c));
+  char c = (char) (w & 0xFF);
+  w = (Word) w & 0xFF00;
+  __asm__ __volatile__ ( "movb %0, %%al; outb $0xe9" ::"a"(c));
   if (c=='\n')
   {
     x = 0;
@@ -34,7 +36,7 @@ void printc(char c)
   }
   else
   {
-    Word ch = (Word) (c & 0x00FF) | 0x0200;
+    Word ch = (Word) (c & 0x00FF) | w;
     DWord screen = 0xb8000 + (y * NUM_COLUMNS + x) * 2;
     if (++x >= NUM_COLUMNS)
     {
@@ -46,13 +48,13 @@ void printc(char c)
 }
 
 // mx, my por referencia
-void printc_xy(Byte mx, Byte my, char c)
+void printc_xy(Byte mx, Byte my, Word c)
 {
   Byte cx, cy;
   cx=x;
   cy=y;
-  x=mx;
-  y=my;
+  x=my;
+  y=mx;
   printc(c);
   x=cx;
   y=cy;
@@ -62,5 +64,5 @@ void printk(char *string)
 {
   int i;
   for (i = 0; string[i]; i++)
-    printc(string[i]);
+    printc((Word)(string[i]|0x0200));
 }

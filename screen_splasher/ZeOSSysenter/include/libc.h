@@ -22,6 +22,12 @@ int getpid();
 
 int fork();
 
+int close();
+
+int createScreen();
+
+int setFocus();
+
 void exit();
 
 int yield();
