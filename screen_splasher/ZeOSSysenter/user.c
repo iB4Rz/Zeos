@@ -26,15 +26,31 @@ void jp_1 () {
   close(fd);
 }
 
+void jp_2() {
+  int fd = createScreen();
+  // Comprovación colores
+  printf(fd,"\e[311mBienvenidos \e[32ma \e[312mSOA!\n");
+  printf(fd,"Los \e[42m\e[31mordenadores son buenos siguiendo instrucciones,");
+  printf(fd,"\e[45m\e[311mno leyendo tu mente.\n");
+  printf(fd,"\e[311m\e[40m\e[<11>;<30>fHola\e[<12>;<35>fa \e[<13>;<36>ftodos");
+  printf(fd,"\e[311m\e[40m\e[<11>;<30>fHola\e[<12>;<35>fa \e[<13>;<36>ftodos");
+  printf(fd,"\e[<19>;<0>fSe\b bo\brra\bra\bn la\bs vo\bca\ble\bs de\b e\bste\b me\bnsa\bje\b");
+  setFocus(fd);
+  delay;
+  delay;
+  // Undo
+  close(fd);
+}
+
 /* screen sharing test */
-void jp_2 () {
+void jp_3 () {
   int fd1 = createScreen();
   int fd2 = createScreen();
   switch (fork())
   {
   case 0:
     printf(fd1,"Estoy aprendiendo a escribir");
-    printf(fd2,"Ya he aprendido a escribir  ");
+    printf(fd2,"Ya he aprendido a escribir\n");
     int fd3 = createScreen();
     printf(fd3,"Querido diario...");
     delay;
@@ -54,7 +70,7 @@ void jp_2 () {
 }
 
 /* close test */
-void jp_3() {
+void jp_4() {
   int fd = createScreen();
   setFocus(fd);
   printf(fd,"Pantalla creada para jp_3: ");
@@ -78,7 +94,7 @@ void jp_3() {
 }
 
 /* exit test */
-void jp_4() {
+void jp_5() {
   delay;
   int fd = 0;
   switch (fork())
@@ -109,7 +125,7 @@ int __attribute__ ((__section__(".text.main")))
     /* Next line, tries to move value 0 to CR3 register. This register is a privileged one, and so it will raise an exception */
      /* __asm__ __volatile__ ("mov %0, %%cr3"::"r" (0) ); */
 
-  printf(0, "Ejecutando test... 1");
+  printf(0, "Ejecutando test...1");
   delay;
   jp_1();
   printf(0, ", 2");
@@ -118,7 +134,9 @@ int __attribute__ ((__section__(".text.main")))
   jp_3();
   printf(0, ", 4");
   jp_4();
-  printf(0, ", fin.");
+  printf(0, ", 5\n");
+  jp_5();
+  printf(0, "Se han terminado los tests");
   while(1) { 
   }
 }

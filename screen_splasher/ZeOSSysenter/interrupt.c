@@ -6,7 +6,7 @@
 #include <segment.h>
 #include <hardware.h>
 #include <io.h>
-
+#include <utils.h>
 #include <sched.h>
 
 #include <zeos_interrupt.h>
@@ -125,10 +125,32 @@ void setIdt()
   set_idt_reg(&idtR);
 }
 
+unsigned long frames = 0;
+unsigned long offset = 0;
+
 void printScreen() {
+  if (frames == 0) {
+    offset = get_ticks()-1;
+    for (int i = 0; i < 80; ++i) printc_xy(0,i,focus->display[0][i]);
+  }
+  frames++;
   if (focus != NULL) {
-    for (int i = 0; i < 25; ++i)
+    for (int i = 22; i < 29; ++i) printc_xy(0,i,focus->display[0][i]);
+    for (int i = 45; i < 54; ++i) printc_xy(0,i,focus->display[0][i]);
+    for (int i = 1; i < 25; ++i)
       for (int j = 0; j < 80; ++j)
         printc_xy(i,j,focus->display[i][j]);
+    double temp = (get_ticks()-offset)/18;
+    double fps =  frames/temp;
+    if (fps < 10) {
+      char c = (fps)+'0';
+      printc_xy(0,75,c|0x7000);
+    }
+    else {
+      char c = ((unsigned int)fps/10)+'0';
+      printc_xy(0,74,c|0x7000);
+      c = ((unsigned int)fps%10)+'0';
+      printc_xy(0,75,c|0x7000);
+    }
   }
 }
