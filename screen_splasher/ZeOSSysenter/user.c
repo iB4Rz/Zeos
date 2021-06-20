@@ -26,9 +26,9 @@ void jp_1 () {
   close(fd);
 }
 
+/* special characters test */
 void jp_2() {
   int fd = createScreen();
-  // Comprovación colores
   printf(fd,"\e[311mBienvenidos \e[32ma \e[312mSOA!\n");
   printf(fd,"Los \e[42m\e[31mordenadores son buenos siguiendo instrucciones,");
   printf(fd,"\e[45m\e[311mno leyendo tu mente.\n");
@@ -117,6 +117,7 @@ void jp_5() {
   delay;
   close(fd);
 }
+
 // ---------------------------------
 
 int __attribute__ ((__section__(".text.main")))
